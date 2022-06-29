@@ -1,3 +1,4 @@
+import logging
 import os
 
 from flask import Flask, render_template, request, url_for, redirect
@@ -11,6 +12,8 @@ blueprint = make_meetup_blueprint(
     secret=os.environ["MEETUP_OAUTH_CLIENT_SECRET"],
 )
 app.register_blueprint(blueprint, url_prefix="/login")
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 @app.route("/")
