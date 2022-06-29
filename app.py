@@ -6,7 +6,10 @@ from flask_dance.contrib.meetup import make_meetup_blueprint, meetup
 app = Flask(__name__)
 app.secret_key = os.environ["FLASK_SECRET_KEY"]
 
-blueprint = make_meetup_blueprint()
+blueprint = make_meetup_blueprint(
+    key=os.environ["MEETUP_OAUTH_CLIENT_ID"],
+    secret=os.environ["MEETUP_OAUTH_CLIENT_SECRET"],
+)
 app.register_blueprint(blueprint, url_prefix="/login")
 
 
