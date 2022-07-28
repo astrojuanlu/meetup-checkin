@@ -40,7 +40,7 @@ def checkin():
     user_data = resp.json()["data"]["self"]
 
     if request.method == "POST":
-        print(request.form)
+        register_checkin(user_data, request.form)
         return redirect(url_for("thankyou"))
     else:
         return render_template("checkin.html")
@@ -49,3 +49,8 @@ def checkin():
 @app.route("/thankyou")
 def thankyou():
     return "Thank you!"
+
+
+def register_checkin(user_data, form_data):
+    print(user_data)
+    print(form_data)
