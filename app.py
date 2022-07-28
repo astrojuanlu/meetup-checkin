@@ -18,6 +18,7 @@ db = SQLAlchemy(app)
 blueprint = make_meetup_blueprint(
     key=os.environ["MEETUP_OAUTH_CLIENT_ID"],
     secret=os.environ["MEETUP_OAUTH_CLIENT_SECRET"],
+    redirect_to="checkin",
 )
 app.register_blueprint(blueprint, url_prefix="/login")
 
