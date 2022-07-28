@@ -69,13 +69,10 @@ def register_checkin(user_data, form_data):
             connection.execute(
                 text(
                     """INSERT INTO
-                checkins (meetup_id, name, email, photographs_consent, email_consent)
-                VALUES
-                (
-                    %(meetup_id)s, %(name)s, %(email)s,
-                    %(photographs_consent)s, %(email_consent)%
-                );
-            """
+checkins (meetup_id, name, email, photographs_consent, email_consent)
+VALUES
+(%(meetup_id)s, %(name)s, %(email)s, %(photographs_consent)s, %(email_consent)%);
+"""
                 ),
                 {
                     "meetup_id": int(user_data["id"]),
