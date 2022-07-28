@@ -11,6 +11,7 @@ app = Flask(__name__)
 app.secret_key = os.environ["FLASK_SECRET_KEY"]
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
+app.config["MEETUP_EVENT_ID"] = os.environ["MEETUP_EVENT_ID"]
 
 db = SQLAlchemy(app)
 
@@ -46,7 +47,9 @@ def checkin():
             resp.raise_for_status()
             user_data = resp.json()["data"]["self"]
 
-            register_checkin(user_data, request.form)
+            register_checkin(
+                int(app.config["MEETUP_EVENT_ID"]), user_data, request.form
+            )
             return redirect(url_for("thankyou"))
         except Exception:
             logging.exception("Error while registering checkin")
@@ -60,7 +63,7 @@ def thankyou():
     return "Thank you!"
 
 
-def register_checkin(user_data, form_data):
+def register_checkin(event_id, user_data, form_data):
     logging.debug(user_data)
     logging.debug(form_data)
 
@@ -69,13 +72,14 @@ def register_checkin(user_data, form_data):
             connection.execute(
                 text(
                     """INSERT INTO
-checkins (meetup_id, name, email, photographs_consent, email_consent)
+checkins (meetup_id, event_id, name, email, photographs_consent, email_consent)
 VALUES
-(:meetup_id, :name, :email, :photographs_consent, :email_consent);
+(:meetup_id, :event_id, :name, :email, :photographs_consent, :email_consent);
 """
                 ),
                 **{
                     "meetup_id": int(user_data["id"]),
+                    "event_id": event_id,
                     "name": user_data["name"],
                     "email": user_data["email"],
                     "photographs_consent": bool(
