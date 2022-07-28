@@ -1,8 +1,10 @@
 import logging
 import os
 
-from flask import Flask, render_template, request, url_for, redirect
+from flask import Flask, redirect, render_template, request, url_for
 from flask_dance.contrib.meetup import make_meetup_blueprint, meetup
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
@@ -46,7 +48,7 @@ def checkin():
 
             register_checkin(user_data, request.form)
             return redirect(url_for("thankyou"))
-        except Exception as e:
+        except Exception:
             logging.exception("Error while registering checkin")
             return "There was an error, please try again", 500
     else:
@@ -69,7 +71,10 @@ def register_checkin(user_data, form_data):
                     """INSERT INTO
                 checkins (meetup_id, name, email, photographs_consent, email_consent)
                 VALUES
-                (%(meetup_id)s, %(name)s, %(email)s, %(photographs_consent)s, %(email_consent)%);
+                (
+                    %(meetup_id)s, %(name)s, %(email)s,
+                    %(photographs_consent)s, %(email_consent)%
+                );
             """
                 ),
                 {
