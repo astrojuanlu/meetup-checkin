@@ -71,10 +71,10 @@ def register_checkin(user_data, form_data):
                     """INSERT INTO
 checkins (meetup_id, name, email, photographs_consent, email_consent)
 VALUES
-(%(meetup_id)s, %(name)s, %(email)s, %(photographs_consent)s, %(email_consent)s);
+(:meetup_id, :name, :email, :photographs_consent, :email_consent);
 """
                 ),
-                {
+                **{
                     "meetup_id": int(user_data["id"]),
                     "name": user_data["name"],
                     "email": user_data["email"],
