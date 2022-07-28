@@ -1,3 +1,5 @@
 flask
 flask-dance
 httpx
+Flask-SQLAlchemy
+sqlalchemy[postgresql_psycopg2binary]

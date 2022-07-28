@@ -7,9 +7,10 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
 app.secret_key = os.environ["FLASK_SECRET_KEY"]
-app.wsgi_app = ProxyFix(
-    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
-)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
+
+db = SQLAlchemy(app)
 
 blueprint = make_meetup_blueprint(
     key=os.environ["MEETUP_OAUTH_CLIENT_ID"],
@@ -36,12 +37,18 @@ def checkin():
         return redirect(url_for("meetup.login"))
 
     if request.method == "POST":
-        resp = meetup.post("/gql", data='{"query": "query { self { id name email } }"}')
-        resp.raise_for_status()
-        user_data = resp.json()["data"]["self"]
+        try:
+            resp = meetup.post(
+                "/gql", data='{"query": "query { self { id name email } }"}'
+            )
+            resp.raise_for_status()
+            user_data = resp.json()["data"]["self"]
 
-        register_checkin(user_data, request.form)
-        return redirect(url_for("thankyou"))
+            register_checkin(user_data, request.form)
+            return redirect(url_for("thankyou"))
+        except Exception as e:
+            logging.exception("Error while registering checkin")
+            return "There was an error, please try again", 500
     else:
         return render_template("checkin.html")
 
@@ -52,5 +59,26 @@ def thankyou():
 
 
 def register_checkin(user_data, form_data):
-    print(user_data)
-    print(form_data)
+    logging.debug(user_data)
+    logging.debug(form_data)
+
+    with db.engine.connect() as connection:
+        with connection.begin():
+            connection.execute(
+                text(
+                    """INSERT INTO
+                checkins (meetup_id, name, email, photographs_consent, email_consent)
+                VALUES
+                (%(meetup_id)s, %(name)s, %(email)s, %(photographs_consent)s, %(email_consent)%);
+            """
+                ),
+                {
+                    "meetup_id": int(user_data["id"]),
+                    "name": user_data["name"],
+                    "email": user_data["email"],
+                    "photographs_consent": bool(
+                        form_data.get("photographs_consent", False)
+                    ),
+                    "email_consent": bool(form_data.get("email_consent", False)),
+                },
+            )
