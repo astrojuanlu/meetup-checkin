@@ -35,11 +35,11 @@ def checkin():
     if not meetup.authorized:
         return redirect(url_for("meetup.login"))
 
-    resp = meetup.post("/gql", data='{"query": "query { self { id name email } }"}')
-    resp.raise_for_status()
-    user_data = resp.json()["data"]["self"]
-
     if request.method == "POST":
+        resp = meetup.post("/gql", data='{"query": "query { self { id name email } }"}')
+        resp.raise_for_status()
+        user_data = resp.json()["data"]["self"]
+
         register_checkin(user_data, request.form)
         return redirect(url_for("thankyou"))
     else:
