@@ -1,3 +1,4 @@
 -c requirements.txt
 
 black==22.6.0
+flake8
