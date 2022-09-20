@@ -1,9 +1,15 @@
+from __future__ import annotations
+
+import datetime as dt
+import json
 import logging
 import os
+import typing as t
 
 from flask import Flask, redirect, render_template, request, url_for
 from flask_dance.contrib.meetup import make_meetup_blueprint, meetup
 from flask_sqlalchemy import SQLAlchemy
+from pyairtable import Table
 from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -22,7 +28,137 @@ blueprint = make_meetup_blueprint(
 )
 app.register_blueprint(blueprint, url_prefix="/login")
 
+AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
+AIRTABLE_BASE = os.environ["AIRTABLE_BASE"]
+AIRTABLE_TABLE = os.environ["AIRTABLE_TABLE"]
+
+MEETUP_ADMIN_IDS = {
+    int(meetup_id) for meetup_id in os.environ["MEETUP_ADMIN_IDS"].split(",")
+}
+
 logging.basicConfig(level=logging.DEBUG)
+
+
+def fetch_all_tickets(event_id: int) -> list[dict[str, t.Any]]:
+    event_rsvps_query = """
+query($eventId: ID!, $rsvpsQuery: TicketsConnectionInput) {
+  event(id: $eventId) {
+    id
+    title
+    dateTime
+    waitlistMode
+    status
+    maxTickets
+    going
+    waiting
+    tickets(input: $rsvpsQuery) {
+      count
+      yesCount
+      noCount
+      waitlistCount
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+      edges {
+        node {
+          id
+          user {
+            name
+          }
+          createdAt
+          updatedAt
+          status
+          isFirstEvent
+          answer {
+            text
+          }
+        }
+      }
+    }
+  }
+}
+"""
+    all_tickets = []
+    end_cursor = None
+    while True:
+        resp = meetup.post(
+            "/gql",
+            data=json.dumps(
+                {
+                    "variables": {
+                        "eventId": event_id,
+                        "rsvpsQuery": {
+                            "after": end_cursor,
+                        }
+                        if end_cursor
+                        else {},
+                    },
+                    "query": event_rsvps_query,
+                }
+            ),
+        )
+        logging.debug(resp.json())
+        resp.raise_for_status()
+
+        tickets_info = resp.json()["data"]["event"]["tickets"]
+        all_tickets.extend([t["node"] for t in tickets_info["edges"]])
+
+        if tickets_info["pageInfo"]["hasNextPage"]:
+            end_cursor = tickets_info["pageInfo"]["endCursor"]
+        else:
+            break
+
+    return all_tickets
+
+
+def do_save_rsvps(event_id: int, base_id: str, table_name: str) -> None:
+    all_tickets = fetch_all_tickets(event_id)
+
+    records = [
+        {
+            "meetup_id": int(ticket["id"]),
+            "name": ticket["user"]["name"],
+            "event_id": event_id,
+            "waiting_list": False,  # No waiting list members are returned!
+            "rsvped_on": dt.datetime.strptime(
+                ticket["updatedAt"], "%Y-%m-%dT%H:%M:%S%z"
+            )
+            .astimezone(dt.timezone.utc)
+            .strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        }
+        for ticket in all_tickets
+    ]
+    logging.info("RECORDS: %s", records)
+
+    table = Table(AIRTABLE_API_KEY, base_id, table_name)
+    table.batch_create(records)
+
+
+@app.route("/save_rsvps")
+def save_rsvps():
+    if not meetup.authorized:
+        return redirect(url_for("meetup.login"))
+
+    try:
+        resp = meetup.post(
+            "/gql", data='{"query": "query { self { id email isLeader } }"}'
+        )
+        resp.raise_for_status()
+        user_data = resp.json()["data"]["self"]
+
+        logging.info(user_data)
+        logging.info(MEETUP_ADMIN_IDS)
+
+        event_id = int(request.args["event_id"])
+        if user_data["isLeader"] and int(user_data["id"]) in MEETUP_ADMIN_IDS:
+            do_save_rsvps(event_id, AIRTABLE_BASE, AIRTABLE_TABLE)
+            return "Saved", 201
+        else:
+            return "Unauthorized", 401
+    except Exception:
+        logging.exception("Error while registering checkin")
+        return "There was an error, please try again", 500
 
 
 @app.route("/")
