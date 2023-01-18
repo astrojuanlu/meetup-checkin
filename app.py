@@ -30,7 +30,7 @@ app.register_blueprint(meetup_bp, url_prefix="/login")
 
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
 AIRTABLE_BASE = os.environ["AIRTABLE_BASE"]
-AIRTABLE_TABLE = os.environ["AIRTABLE_TABLE"]
+AIRTABLE_RSVPS_TABLE = os.environ["AIRTABLE_RSVPS_TABLE"]
 
 MEETUP_ADMIN_IDS = {
     int(meetup_id) for meetup_id in os.environ["MEETUP_ADMIN_IDS"].split(",")
@@ -150,7 +150,7 @@ def save_rsvps():
 
         event_id = int(request.args["event_id"])
         if user_data["isLeader"] and int(user_data["id"]) in MEETUP_ADMIN_IDS:
-            do_save_rsvps(event_id, AIRTABLE_BASE, AIRTABLE_TABLE)
+            do_save_rsvps(event_id, AIRTABLE_BASE, AIRTABLE_RSVPS_TABLE)
             return "Saved", 201
         else:
             return "Unauthorized", 401
