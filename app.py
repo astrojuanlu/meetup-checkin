@@ -212,6 +212,9 @@ def do_register_checkin(event_id, user_data, form_data, base_id: str, table_name
         "email": user_data["email"],
         "photographs_consent": bool(form_data.get("photographs_consent", False)),
         "email_consent": bool(form_data.get("email_consent", False)),
+        "date_checkin": dt.datetime.now(dt.timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%S.%fZ"
+        ),
     }
 
     with db.engine.connect() as connection:
