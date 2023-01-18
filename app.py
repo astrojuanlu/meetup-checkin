@@ -180,6 +180,7 @@ def checkin():
             )
             resp.raise_for_status()
             user_data = resp.json()["data"]["self"]
+            assert user_data is not None
 
             do_register_checkin(
                 int(app.config["MEETUP_EVENT_ID"]),
