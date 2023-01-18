@@ -21,12 +21,12 @@ app.config["MEETUP_EVENT_ID"] = os.environ["MEETUP_EVENT_ID"]
 
 db = SQLAlchemy(app)
 
-blueprint = make_meetup_blueprint(
+meetup_bp = make_meetup_blueprint(
     key=os.environ["MEETUP_OAUTH_CLIENT_ID"],
     secret=os.environ["MEETUP_OAUTH_CLIENT_SECRET"],
     redirect_to="checkin",
 )
-app.register_blueprint(blueprint, url_prefix="/login")
+app.register_blueprint(meetup_bp, url_prefix="/login")
 
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
 AIRTABLE_BASE = os.environ["AIRTABLE_BASE"]
@@ -136,10 +136,8 @@ def do_save_rsvps(event_id: int, base_id: str, table_name: str) -> None:
 
 
 @app.route("/save_rsvps")
+@meetup_bp.session.authorization_required
 def save_rsvps():
-    if not meetup.authorized:
-        return redirect(url_for("meetup.login"))
-
     try:
         resp = meetup.post(
             "/gql", data='{"query": "query { self { id email isLeader } }"}'
@@ -172,10 +170,8 @@ def health():
 
 
 @app.route("/checkin", methods=["GET", "POST"])
+@meetup_bp.session.authorization_required
 def checkin():
-    if not meetup.authorized:
-        return redirect(url_for("meetup.login"))
-
     if request.method == "POST":
         try:
             resp = meetup.post(
