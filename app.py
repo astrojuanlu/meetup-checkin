@@ -21,16 +21,17 @@ app.config["MEETUP_EVENT_ID"] = os.environ["MEETUP_EVENT_ID"]
 
 db = SQLAlchemy(app)
 
-blueprint = make_meetup_blueprint(
+meetup_bp = make_meetup_blueprint(
     key=os.environ["MEETUP_OAUTH_CLIENT_ID"],
     secret=os.environ["MEETUP_OAUTH_CLIENT_SECRET"],
     redirect_to="checkin",
 )
-app.register_blueprint(blueprint, url_prefix="/login")
+app.register_blueprint(meetup_bp, url_prefix="/login")
 
 AIRTABLE_API_KEY = os.environ["AIRTABLE_API_KEY"]
 AIRTABLE_BASE = os.environ["AIRTABLE_BASE"]
-AIRTABLE_TABLE = os.environ["AIRTABLE_TABLE"]
+AIRTABLE_RSVPS_TABLE = os.environ["AIRTABLE_RSVPS_TABLE"]
+AIRTABLE_CHECKINS_TABLE = os.environ["AIRTABLE_CHECKINS_TABLE"]
 
 MEETUP_ADMIN_IDS = {
     int(meetup_id) for meetup_id in os.environ["MEETUP_ADMIN_IDS"].split(",")
@@ -136,10 +137,8 @@ def do_save_rsvps(event_id: int, base_id: str, table_name: str) -> None:
 
 
 @app.route("/save_rsvps")
+@meetup_bp.session.authorization_required
 def save_rsvps():
-    if not meetup.authorized:
-        return redirect(url_for("meetup.login"))
-
     try:
         resp = meetup.post(
             "/gql", data='{"query": "query { self { id email isLeader } }"}'
@@ -152,7 +151,7 @@ def save_rsvps():
 
         event_id = int(request.args["event_id"])
         if user_data["isLeader"] and int(user_data["id"]) in MEETUP_ADMIN_IDS:
-            do_save_rsvps(event_id, AIRTABLE_BASE, AIRTABLE_TABLE)
+            do_save_rsvps(event_id, AIRTABLE_BASE, AIRTABLE_RSVPS_TABLE)
             return "Saved", 201
         else:
             return "Unauthorized", 401
@@ -172,10 +171,8 @@ def health():
 
 
 @app.route("/checkin", methods=["GET", "POST"])
+@meetup_bp.session.authorization_required
 def checkin():
-    if not meetup.authorized:
-        return redirect(url_for("meetup.login"))
-
     if request.method == "POST":
         try:
             resp = meetup.post(
@@ -184,8 +181,12 @@ def checkin():
             resp.raise_for_status()
             user_data = resp.json()["data"]["self"]
 
-            register_checkin(
-                int(app.config["MEETUP_EVENT_ID"]), user_data, request.form
+            do_register_checkin(
+                int(app.config["MEETUP_EVENT_ID"]),
+                user_data,
+                request.form,
+                AIRTABLE_BASE,
+                AIRTABLE_CHECKINS_TABLE,
             )
             return redirect(url_for("thankyou"))
         except Exception:
@@ -200,9 +201,18 @@ def thankyou():
     return "Thank you!"
 
 
-def register_checkin(event_id, user_data, form_data):
+def do_register_checkin(event_id, user_data, form_data, base_id: str, table_name: str):
     logging.debug(user_data)
     logging.debug(form_data)
+
+    record = {
+        "meetup_id": int(user_data["id"]),
+        "event_id": event_id,
+        "name": user_data["name"],
+        "email": user_data["email"],
+        "photographs_consent": bool(form_data.get("photographs_consent", False)),
+        "email_consent": bool(form_data.get("email_consent", False)),
+    }
 
     with db.engine.connect() as connection:
         with connection.begin():
@@ -214,14 +224,8 @@ VALUES
 (:meetup_id, :event_id, :name, :email, :photographs_consent, :email_consent);
 """
                 ),
-                **{
-                    "meetup_id": int(user_data["id"]),
-                    "event_id": event_id,
-                    "name": user_data["name"],
-                    "email": user_data["email"],
-                    "photographs_consent": bool(
-                        form_data.get("photographs_consent", False)
-                    ),
-                    "email_consent": bool(form_data.get("email_consent", False)),
-                },
+                **record,
             )
+
+    table = Table(AIRTABLE_API_KEY, base_id, table_name)
+    table.create(record)
