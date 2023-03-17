@@ -13,7 +13,7 @@ from pyairtable import Table
 from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='./static')
 app.secret_key = os.environ["FLASK_SECRET_KEY"]
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
@@ -164,7 +164,7 @@ def save_rsvps():
 
 @app.route("/")
 def home():
-    return "<h1>PyData Madrid Check-in</h1>"
+    return render_template("title.html")
 
 
 @app.route("/health")
@@ -193,17 +193,12 @@ def checkin():
                 AIRTABLE_BASE,
                 AIRTABLE_CHECKINS_TABLE,
             )
-            return redirect(url_for("thankyou"))
+            return render_template("thankyou.html")
         except Exception:
             logging.exception("Error while registering checkin")
             return "There was an error, please try again", 500
     else:
-        return render_template("checkin.html")
-
-
-@app.route("/thankyou")
-def thankyou():
-    return "Thank you!"
+        return render_template("checkin_v2.html")
 
 
 def do_register_checkin(event_id, user_data, form_data, base_id: str, table_name: str):
