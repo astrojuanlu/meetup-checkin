@@ -1,0 +1,42 @@
+<!doctype html>
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static',filename='style.css') }}">
+</head>
+
+<title>PyData Madrid Check-in</title>
+<body>
+  <div class="container">
+    <form method="post">
+      <img src="https://secure.meetupstatic.com/photos/event/4/1/9/5/600_508636789.jpeg" width="50%">
+      <br> 
+      <table>
+        <tr>
+          <td valign=top style="padding: 15px;"> 
+            <input type="checkbox" style="transform:scale(2, 2);" id="photographs_consent" name="photographs_consent">
+          </td>
+          <td valign=top>
+            <div id="photo_consent_text" style="font-size:32px; text-align: left">[photo_consent_text]</div>
+          </td>
+        </tr>
+      </table>  
+      <br> 
+      <table>
+        <tr>
+          <td valign=top style="padding: 15px;"> 
+            <input type="checkbox" style="transform:scale(2, 2)" id="email_consent" name="email_consent">
+          </td>
+          <td valign=top>
+            <div id="email_consent_text" style="font-size:32px; text-align: left">[email_consent_text]</div>
+          </td>
+        </tr>
+      </table>
+      <br>  
+      <button class="button-19" style="width:66%; height:80px"><div id="submit_text" style="font-size:24px">Submit</div></button>
+    </form>
+  </div>
+</body>
+<script src="{{ url_for('static',filename='checkin.js') }}"></script>
