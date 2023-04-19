@@ -217,6 +217,12 @@ def do_register_checkin(event_id, user_data, form_data, base_id: str, table_name
         ),
     }
 
+    # As explained in https://stackoverflow.com/a/31742830/554319
+    # and https://stackoverflow.com/a/4070385/554319
+    # there are two ways to address idempotent inserts:
+    # (1) `ON CONFLICT DO NOTHING/UPDATE`, or
+    # (2) insert every checkin attempt in an unconstrained table.
+    # Here we do the first one, for now
     with db.engine.connect() as connection:
         with connection.begin():
             connection.execute(
@@ -224,7 +230,8 @@ def do_register_checkin(event_id, user_data, form_data, base_id: str, table_name
                     """INSERT INTO
 checkins (meetup_id, event_id, name, email, photographs_consent, email_consent)
 VALUES
-(:meetup_id, :event_id, :name, :email, :photographs_consent, :email_consent);
+(:meetup_id, :event_id, :name, :email, :photographs_consent, :email_consent)
+ON CONFLICT DO NOTHING;
 """
                 ),
                 **record,
