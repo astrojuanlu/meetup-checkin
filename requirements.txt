@@ -4,7 +4,7 @@ anyio==3.6.1
     # via httpcore
 blinker==1.8.2
     # via flask
-certifi==2022.6.15
+certifi==2024.2.2
     # via
     #   httpcore
     #   httpx
@@ -24,7 +24,7 @@ flask-sqlalchemy==3.0.5
     # via -r requirements.in
 greenlet==3.0.3
     # via sqlalchemy
-gunicorn==20.1.0
+gunicorn==22.0.0
     # via -r requirements.in
 h11==0.12.0
     # via httpcore
@@ -49,6 +49,8 @@ oauthlib==3.2.0
     # via
     #   flask-dance
     #   requests-oauthlib
+packaging==24.0
+    # via gunicorn
 psycopg2-binary==2.9.9
     # via sqlalchemy
 pyairtable==1.3.0
@@ -62,8 +64,6 @@ requests-oauthlib==1.3.1
     # via flask-dance
 rfc3986==1.5.0
     # via httpx
-setuptools==70.0.0
-    # via gunicorn
 sniffio==1.2.0
     # via
     #   anyio
