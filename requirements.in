@@ -3,5 +3,5 @@ flask-dance
 gunicorn
 httpx
 Flask-SQLAlchemy
-sqlalchemy[postgresql_psycopg2binary]
+sqlalchemy[postgresql_psycopg2binary]<2
 pyairtable
